@@ -1,6 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { useRequests } from "../context/RequestContext";
 
+// ✅ Auto-detect backend URL
+const backendUrl =
+  import.meta.env.VITE_BACKEND_URL ||
+  "https://counselling-website-backend.vercel.app";
+
 export default function MentorLogin() {
   const { requests, resolveRequest } = useRequests();
 
@@ -24,9 +29,15 @@ export default function MentorLogin() {
   // 🧠 Fetch students (only when logged in)
   useEffect(() => {
     if (isLoggedIn) {
-      fetch("https://counselling-website-backend.vercel.app/api/students")
-        .then((res) => res.json())
-        .then((data) => setStudents(data))
+      fetch(`${backendUrl}/api/students`)
+        .then((res) => {
+          if (!res.ok) throw new Error("Failed to fetch students");
+          return res.json();
+        })
+        .then((data) => {
+          if (Array.isArray(data)) setStudents(data);
+          else setStudents([]);
+        })
         .catch((err) => console.error("Error fetching students:", err));
     }
   }, [isLoggedIn]);
@@ -49,26 +60,24 @@ export default function MentorLogin() {
     }
 
     try {
-      const res = await fetch(
-        "https://counselling-website-backend.vercel.app/api/students",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name, mobile, counselingType }),
-        }
-      );
+      const res = await fetch(`${backendUrl}/api/students`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, mobile, counselingType }),
+      });
 
       const data = await res.json();
 
       if (res.ok) {
+        alert("✅ Student added successfully!");
         setStudents((prev) => [data, ...prev]);
         setNewStudent({ name: "", mobile: "", counselingType: "" });
       } else {
-        alert("Error: " + data.message);
+        alert("❌ Error: " + data.message);
       }
     } catch (err) {
       console.error("Error adding student:", err);
-      alert("Failed to connect to backend");
+      alert("❌ Failed to connect to backend");
     }
   };
 
